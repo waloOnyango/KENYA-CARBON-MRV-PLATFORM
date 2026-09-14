@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/KENYA-CARBON-MRV-PLATFORM/static/js/main.76c8f4f9.js",
+    "main.js": "/KENYA-CARBON-MRV-PLATFORM/static/js/main.b7a19b3b.js",
     "index.html": "/KENYA-CARBON-MRV-PLATFORM/index.html",
-    "main.76c8f4f9.js.map": "/KENYA-CARBON-MRV-PLATFORM/static/js/main.76c8f4f9.js.map"
+    "main.b7a19b3b.js.map": "/KENYA-CARBON-MRV-PLATFORM/static/js/main.b7a19b3b.js.map"
   },
   "entrypoints": [
-    "static/js/main.76c8f4f9.js"
+    "static/js/main.b7a19b3b.js"
   ]
 }
