@@ -1,0 +1,24 @@
+services:
+  # Web Service for Node.js / Express Backend
+  - type: web
+    name: kenya-carbon-mrv-backend
+    env: node
+    region: frankfurt # Low latency regional hosting option
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mrv-postgres-db
+          property: connectionString
+
+databases:
+  # PostgreSQL Database Instance
+  - name: mrv-postgres-db
+    databaseName: postgres
+    user: postgres
+    region: frankfurt
+    plan: free

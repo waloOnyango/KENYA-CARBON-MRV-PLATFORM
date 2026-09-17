@@ -1,0 +1,18 @@
+# Dependencies
+/node_modules
+
+# Environment Variables & Credentials
+.env
+.env.local
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & Editor Specific Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

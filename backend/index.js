@@ -1,85 +1,71 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./db');
+const { Pool } = require('pg');
+require('dotenv').config();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
 
-// Carbon Calculation Constants (AMS-II.G Methodology)
-const F_NRB = 0.88; 
-const EF_WOODY = 0.001747; // tCO2e/kg
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', service: 'Kenya Carbon MRV API' });
+// Configure PostgreSQL Database Connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('render.com') 
+    ? { rejectUnauthorized: false } 
+    : false
 });
 
-// Submit / Ingest Field Audits
-app.post('/api/projects/cookstoves/submit', async (req, res) => {
-  try {
-    const { records } = req.body;
-
-    if (!records || !Array.isArray(records)) {
-      return res.status(400).json({ error: 'Invalid payload: records array required.' });
-    }
-
-    let processedCount = 0;
-
-    for (const record of records) {
-      const fuelwoodSavedKg = parseFloat(record.fuelwoodSavedKg) || 0;
-      
-      // Calculate annual carbon credits saved (tCO2e/year)
-      const annualWoodSavedKg = fuelwoodSavedKg * 365;
-      const calculatedTco2e = Number((annualWoodSavedKg * F_NRB * EF_WOODY).toFixed(4));
-
-      const query = `
-        INSERT INTO field_audits (household_id, county, fuelwood_saved_kg, calculated_tco2e, latitude, longitude)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (household_id) DO UPDATE 
-        SET fuelwood_saved_kg = EXCLUDED.fuelwood_saved_kg, calculated_tco2e = EXCLUDED.calculated_tco2e;
-      `;
-
-      await db.query(query, [
-        record.householdId,
-        record.county || 'Nakuru',
-        fuelwoodSavedKg,
-        calculatedTco2e,
-        record.latitude || -0.3031,
-        record.longitude || 36.0800
-      ]);
-
-      processedCount++;
-      console.log(`Ingested record: ${record.householdId} | Est. Offset: ${calculatedTco2e} tCO2e/yr`);
-    }
-
-    res.status(200).json({ success: true, count: processedCount });
-  } catch (err) {
-    console.error('Database insertion error:', err);
-    res.status(500).json({ error: 'Failed to process field audit records.' });
-  }
+// Root Route
+app.get('/', (req, res) => {
+  res.send('Backend Server is up and running!');
 });
 
-// Summary Endpoint for Dashboard Metrics
-app.get('/api/projects/cookstoves/summary', async (req, res) => {
+// Health & Database Connection Test Route
+app.get('/api/health', async (req, res) => {
   try {
-    const totalQuery = 'SELECT COUNT(*) as total_households, COALESCE(SUM(calculated_tco2e), 0) as total_tco2e FROM field_audits;';
-    const countyQuery = 'SELECT county, COUNT(*) as households, COALESCE(SUM(calculated_tco2e), 0) as total_tco2e FROM field_audits GROUP BY county;';
-
-    const totalRes = await db.query(totalQuery);
-    const countyRes = await db.query(countyQuery);
-
+    const result = await pool.query('SELECT NOW()');
     res.json({
-      summary: totalRes.rows[0],
-      byCounty: countyRes.rows
+      status: 'success',
+      message: 'Server and Database are connected!',
+      dbTime: result.rows[0].now
     });
-  } catch (err) {
-    console.error('Summary query error:', err);
-    res.status(500).json({ error: 'Failed to fetch project summary.' });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: error.message
+    });
   }
 });
 
-const PORT = 5000;
+// Start the Server
 app.listen(PORT, () => {
-  console.log(`MRV Backend API running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+const express = require('express');
+const cors = require('cors');
+const pool = require('./db'); // Imports the connection from db.js
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(express.json());
+
+// Health Check Endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ status: 'success', message: 'MRV Backend Active', time: result.rows[0].now });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
