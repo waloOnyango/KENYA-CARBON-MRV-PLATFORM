@@ -141,3 +141,29 @@ app.listen(PORT, () => {
   console.log(`Health Check: http://localhost:${PORT}/api/health`);
   console.log(`=================================================`);
 });
+const express = require('express');
+const app = express();
+
+// ... Keep your existing routes, middlewares (cors, json), and DB imports ...
+
+// Export the Express app as a module handler for Vercel
+module.exports = app;
+
+// Only listen on a port if running locally outside Vercel
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Required for hosted PostgreSQL (Render/Neon/Supabase)
+  },
+  max: 1, // Restrict pool size per serverless invocation
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+module.exports = pool;
