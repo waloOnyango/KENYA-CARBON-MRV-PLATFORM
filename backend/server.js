@@ -93,4 +93,27 @@ if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => console.log(`Local server running on port ${PORT}`));
 }
 
-module.exports = app;
+module.exports = app;app.get('/api/init-db', async (req, res) => { ... });
+// Add or update this route in backend/server.js
+app.get('/api/projects', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM mrv_projects ORDER BY created_at DESC');
+    res.status(200).json({ status: 'success', data: rows });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+// Ensure fallback to process.env.POSTGRES_URL if DATABASE_URL is unset
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+if (!connectionString) {
+  console.error("FATAL: Neither DATABASE_URL nor POSTGRES_URL is set in environment variables.");
+}
+
+const pool = new Pool({
+  connectionString: connectionString,
+  ssl: connectionString ? { rejectUnauthorized: false } : false,
+  max: 1,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
