@@ -167,3 +167,31 @@ const pool = new Pool({
 });
 
 module.exports = pool;
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 1, // Keep connections minimal for serverless invocations
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+module.exports = pool;const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 1, // Keep connections minimal for serverless invocations
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+module.exports = pool;
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Kenya Carbon MRV Platform API is running on Vercel' });
+});
