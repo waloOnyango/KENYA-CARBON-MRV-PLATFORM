@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 5000;
 // Enable CORS and JSON Parsing
 app.use(cors());
 app.use(express.json());
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // -----------------------------------------------------------------------------
 // PostgreSQL Database Connection Pool Setup
@@ -141,7 +142,6 @@ app.listen(PORT, () => {
   console.log(`Health Check: http://localhost:${PORT}/api/health`);
   console.log(`=================================================`);
 });
-const express = require('express');
 const app = express();
 
 // ... Keep your existing routes, middlewares (cors, json), and DB imports ...
@@ -195,3 +195,5 @@ module.exports = pool;
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'Kenya Carbon MRV Platform API is running on Vercel' });
 });
+// Export the Express app for Vercel Serverless Functions
+module.exports = app;
