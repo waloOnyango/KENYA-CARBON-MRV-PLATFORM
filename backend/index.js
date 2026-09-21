@@ -9,38 +9,35 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve the index.html frontend from the backend directory
+// Serve static frontend assets from backend directory
 app.use(express.static(__dirname));
 
-// Clean connection string lookup order for Neon
-let connectionString = 
-  process.env.DATABASE_URL || 
-  process.env.POSTGRES_URL || 
-  process.env.npg_8jrqGtW0sbEg_DATABASE_URL;
+// Resolve Database Connection String
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
+// Initialize PostgreSQL Pool safely
+let pool;
 if (connectionString) {
-  connectionString = connectionString.trim().replace(/^["']|["']$/g, '');
+  pool = new Pool({
+    connectionString: connectionString.trim().replace(/^["']|["']$/g, ''),
+    ssl: { rejectUnauthorized: false },
+    max: 1,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  });
 }
 
-const pool = new Pool({
-  connectionString: connectionString,
-  ssl: connectionString ? { rejectUnauthorized: false } : false,
-  max: 1,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-});
-
-// Root Route - Serves the Clean Cooking MRV Dashboard UI
+// Serve UI at Root URL
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Database Health Check Endpoint
+// API Health Check
 app.get('/api/health', async (req, res) => {
-  if (!connectionString) {
+  if (!pool) {
     return res.status(500).json({
       status: 'error',
-      message: 'DATABASE_URL environment variable is missing on Vercel.'
+      message: 'DATABASE_URL is not configured in Vercel Environment Variables.'
     });
   }
 
@@ -62,6 +59,13 @@ app.get('/api/health', async (req, res) => {
 
 // POST /api/init-db - Create Clean Cooking MRV Tables
 app.post('/api/init-db', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'DATABASE_URL is missing in environment variables.'
+    });
+  }
+
   try {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mrv_projects (
@@ -91,6 +95,7 @@ app.post('/api/init-db', async (req, res) => {
       message: 'Clean cooking MRV tables initialized successfully!'
     });
   } catch (error) {
+    console.error('Database Init Error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Failed to initialize database tables',
@@ -99,8 +104,15 @@ app.post('/api/init-db', async (req, res) => {
   }
 });
 
-// POST /api/projects - Register a Clean Cooking MRV Project
+// POST /api/projects - Register Clean Cooking Project
 app.post('/api/projects', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'DATABASE_URL is missing in environment variables.'
+    });
+  }
+
   const { name, location, project_type, fuel_type, target_households, description, developer } = req.body;
 
   if (!name || !project_type) {
@@ -134,8 +146,15 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-// GET /api/projects - Retrieve All Projects
+// GET /api/projects - Query Registered Projects
 app.get('/api/projects', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'DATABASE_URL is missing in environment variables.'
+    });
+  }
+
   try {
     const result = await pool.query('SELECT * FROM mrv_projects ORDER BY id DESC;');
     res.status(200).json({
