@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kenya Carbon MRV Platform</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2e7d32; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #2e7d32; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #1b5e20; }
+        .response { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; }
+        .success { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .error { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kenya Carbon MRV Platform</h1>
+        <p>Clean Cooking & Sustainable Biomass Project Registration</p>
+        
+        <form id="projectForm">
+            <div class="form-group">
+                <label for="name">Project Name</label>
+                <input type="text" id="name" required placeholder="e.g. Kenya Clean Cooking & Sustainable Biomass Project">
+            </div>
+            <div class="form-group">
+                <label for="location">Location / Region</label>
+                <input type="text" id="location" placeholder="e.g. Nairobi & Kiambu Counties, Kenya">
+            </div>
+            <div class="form-group">
+                <label for="project_type">Project Type</label>
+                <select id="project_type">
+                    <option value="Clean Cookstoves & Sustainable Biomass Briquettes">Clean Cookstoves & Sustainable Biomass Briquettes</option>
+                    <option value="Sugarcane Bagasse Biochar">Sugarcane Bagasse Biochar</option>
+                    <option value="Biogas Distribution">Biogas Distribution</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="fuel_type">Fuel Type</label>
+                <input type="text" id="fuel_type" placeholder="e.g. Sugarcane Bagasse & Sawdust Briquettes">
+            </div>
+            <div class="form-group">
+                <label for="target_households">Target Households</label>
+                <input type="number" id="target_households" placeholder="15000">
+            </div>
+            <div class="form-group">
+                <label for="developer">Project Developer</label>
+                <input type="text" id="developer" placeholder="Afrinet Carbon Ltd">
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" rows="3" placeholder="MRV deployment tracking thermal efficiency and carbon reductions..."></textarea>
+            </div>
+            <button type="submit">Register MRV Project</button>
+        </form>
+
+        <div id="responseBox" class="response"></div>
+    </div>
+
+    <script>
+        document.getElementById('projectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const responseBox = document.getElementById('responseBox');
+            
+            const payload = {
+                name: document.getElementById('name').value,
+                location: document.getElementById('location').value,
+                project_type: document.getElementById('project_type').value,
+                fuel_type: document.getElementById('fuel_type').value,
+                target_households: parseInt(document.getElementById('target_households').value) || 0,
+                developer: document.getElementById('developer').value,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                const res = await fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                responseBox.style.display = 'block';
+                if (res.ok) {
+                    responseBox.className = 'response success';
+                    responseBox.innerText = 'Project registered successfully! Project ID: ' + (data.data ? data.data.id : 'N/A');
+                } else {
+                    responseBox.className = 'response error';
+                    responseBox.innerText = 'Error: ' + data.message;
+                }
+            } catch (err) {
+                responseBox.style.display = 'block';
+                responseBox.className = 'response error';
+                responseBox.innerText = 'Failed to connect to backend API: ' + err.message;
+            }
+        });
+    </script>
+</body>
+</html>
