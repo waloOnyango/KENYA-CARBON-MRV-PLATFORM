@@ -143,4 +143,12 @@ app.post('/api/init-db', async (req, res) => {
       error: error.message
     });
   }
-});
+});{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/server.js"
+    }
+  ]
+}
