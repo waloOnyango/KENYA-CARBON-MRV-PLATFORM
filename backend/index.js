@@ -171,3 +171,99 @@ app.get('/api/projects', async (req, res) => {
 });
 
 module.exports = app;
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const { Pool } = require('pg');
+const path = require('path');
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Serve static frontend files
+app.use(express.static(path.join(__dirname)));
+
+// Get connection string safely
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+let pool = null;
+if (connectionString) {
+  pool = new Pool({
+    connectionString: connectionString.trim().replace(/^["']|["']$/g, ''),
+    ssl: { rejectUnauthorized: false },
+    max: 1,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  });
+}
+
+// Serve UI on Root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// GET /api/health
+app.get('/api/health', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'DATABASE_URL environment variable is missing on Vercel.'
+    });
+  }
+
+  try {
+    const result = await pool.query('SELECT NOW() AS current_time;');
+    res.status(200).json({
+      status: 'success',
+      message: 'Database connected successfully!',
+      time: result.rows[0].current_time
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/init-db
+app.post('/api/init-db', async (req, res) => {
+  if (!pool) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'DATABASE_URL is missing in Vercel environment variables.'
+    });
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mrv_projects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        location VARCHAR(255),
+        project_type VARCHAR(255) NOT NULL,
+        fuel_type VARCHAR(100),
+        target_households INTEGER,
+        description TEXT,
+        developer VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Clean cooking MRV tables initialized successfully!'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to initialize database tables',
+      error: error.message
+    });
+  }
+});
+
+module.exports = app;
