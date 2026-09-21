@@ -59,44 +59,31 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Local development server runner
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`Server running locally on port ${PORT}`));
-}
-
-// Export module for Vercel Serverless Function Execution
-module.exports = app;
-// POST /api/projects - Register a new project
-app.post('/api/projects', async (req, res) => {
-  const { name, location, project_type, description, developer } = req.body;
-
-  if (!name || !project_type) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Name and project_type are required fields.'
-    });
-  }
-
+// POST /api/init-db - Create required tables with GIS coordinate columns
+app.post('/api/init-db', async (req, res) => {
   try {
-    const query = `
-      INSERT INTO mrv_projects (name, location, project_type, description, developer)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *;
-    `;
-    const values = [name, location, project_type, description, developer];
-    const result = await pool.query(query, values);
-
-    res.status(201).json({
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mrv_projects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        location VARCHAR(255),
+        project_type VARCHAR(255) NOT NULL,
+        co2_reduced NUMERIC(12, 2) DEFAULT 0.00,
+        latitude NUMERIC(10, 6),
+        longitude NUMERIC(10, 6),
+        description TEXT,
+        developer VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    res.status(200).json({
       status: 'success',
-      message: 'Project registered successfully',
-      data: result.rows[0]
+      message: 'Database tables initialized successfully with spatial attributes!'
     });
   } catch (error) {
-    console.error('Error inserting project:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to register project',
+      message: 'Failed to initialize database tables',
       error: error.message
     });
   }
@@ -118,37 +105,47 @@ app.get('/api/projects', async (req, res) => {
     });
   }
 });
-// POST /api/init-db - Create required tables
-app.post('/api/init-db', async (req, res) => {
+
+// POST /api/projects - Register a new project with GIS coordinates
+app.post('/api/projects', async (req, res) => {
+  const { name, location, project_type, co2_reduced, latitude, longitude, description, developer } = req.body;
+
+  if (!name || !project_type) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Name and project_type are required fields.'
+    });
+  }
+
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS mrv_projects (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        location VARCHAR(255),
-        project_type VARCHAR(255) NOT NULL,
-        description TEXT,
-        developer VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    res.status(200).json({
+    const query = `
+      INSERT INTO mrv_projects (name, location, project_type, co2_reduced, latitude, longitude, description, developer)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *;
+    `;
+    const values = [name, location, project_type, co2_reduced || 0, latitude || null, longitude || null, description, developer];
+    const result = await pool.query(query, values);
+
+    res.status(201).json({
       status: 'success',
-      message: 'Database tables initialized successfully!'
+      message: 'Project registered successfully',
+      data: result.rows[0]
     });
   } catch (error) {
+    console.error('Error inserting project:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to initialize database tables',
+      message: 'Failed to register project',
       error: error.message
     });
   }
-});{
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/server.js"
-    }
-  ]
+});
+
+// Local development server runner
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`Server running locally on port ${PORT}`));
 }
+
+// Export module for Vercel Serverless Function Execution MUST be at the very bottom
+module.exports = app;
