@@ -7,21 +7,27 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f7f6; color: #333; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #2e7d32; }
+        h1 { color: #2e7d32; margin-bottom: 5px; }
+        .subtitle { margin-top: 0; color: #666; margin-bottom: 25px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
         input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #2e7d32; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button { background-color: #2e7d32; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; }
         button:hover { background-color: #1b5e20; }
+        button:disabled { background-color: #a5d6a7; cursor: not-allowed; }
         .response { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; }
         .success { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
         .error { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .projects-section { margin-top: 40px; border-top: 2px solid #eee; padding-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 14px; }
+        th { background-color: #f2f2f2; color: #2e7d32; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Kenya Carbon MRV Platform</h1>
-        <p>Clean Cooking & Sustainable Biomass Project Registration</p>
+        <p class="subtitle">Clean Cooking & Sustainable Biomass Project Registration</p>
         
         <form id="projectForm">
             <div class="form-group">
@@ -50,22 +56,86 @@
             </div>
             <div class="form-group">
                 <label for="developer">Project Developer</label>
-                <input type="text" id="developer" placeholder="Afrinet Carbon Ltd">
+                <input type="text" id="developer" placeholder="e.g. Afrinet Carbon Ltd">
             </div>
             <div class="form-group">
                 <label for="description">Description</label>
                 <textarea id="description" rows="3" placeholder="MRV deployment tracking thermal efficiency and carbon reductions..."></textarea>
             </div>
-            <button type="submit">Register MRV Project</button>
+            <button type="submit" id="submitBtn">Register MRV Project</button>
         </form>
 
         <div id="responseBox" class="response"></div>
+
+        <!-- Registered Projects View -->
+        <div class="projects-section">
+            <h2>Registered Projects</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Developer</th>
+                        <th>Location</th>
+                        <th>Target HH</th>
+                    </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                    <tr><td colspan="6" style="text-align:center;">Loading registered projects...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
-        document.getElementById('projectForm').addEventListener('submit', async (e) => {
+        const form = document.getElementById('projectForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const responseBox = document.getElementById('responseBox');
+        const projectsTableBody = document.getElementById('projectsTableBody');
+
+        // Fetch and populate registered projects on page load
+        async function fetchProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                const result = await res.json();
+
+                if (res.ok && Array.isArray(result.data)) {
+                    if (result.data.length === 0) {
+                        projectsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No projects registered yet.</td></tr>';
+                        return;
+                    }
+
+                    projectsTableBody.innerHTML = result.data.map(p => `
+                        <tr>
+                            <td>#${p.id}</td>
+                            <td><strong>${escapeHtml(p.name)}</strong></td>
+                            <td>${escapeHtml(p.project_type || 'N/A')}</td>
+                            <td>${escapeHtml(p.developer || 'N/A')}</td>
+                            <td>${escapeHtml(p.location || 'N/A')}</td>
+                            <td>${p.target_households ? p.target_households.toLocaleString() : '0'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    projectsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Failed to load projects.</td></tr>';
+                }
+            } catch (err) {
+                projectsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Error connecting to API.</td></tr>';
+            }
+        }
+
+        // Helper to sanitize HTML strings
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        // Form submission handler
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const responseBox = document.getElementById('responseBox');
+            
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Registering Project...';
             
             const payload = {
                 name: document.getElementById('name').value,
@@ -89,16 +159,24 @@
                 if (res.ok) {
                     responseBox.className = 'response success';
                     responseBox.innerText = 'Project registered successfully! Project ID: ' + (data.data ? data.data.id : 'N/A');
+                    form.reset();
+                    fetchProjects(); // Refresh the list
                 } else {
                     responseBox.className = 'response error';
-                    responseBox.innerText = 'Error: ' + data.message;
+                    responseBox.innerText = 'Error: ' + (data.message || 'Registration failed');
                 }
             } catch (err) {
                 responseBox.style.display = 'block';
                 responseBox.className = 'response error';
                 responseBox.innerText = 'Failed to connect to backend API: ' + err.message;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Register MRV Project';
             }
         });
+
+        // Initial fetch on page load
+        fetchProjects();
     </script>
 </body>
 </html>

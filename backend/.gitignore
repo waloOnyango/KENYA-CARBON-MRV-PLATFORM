@@ -3,13 +3,19 @@
 
 # Environment Variables & Credentials
 .env
+.env.*
 .env.local
 *.env
+
+# Vercel CLI build output
+.vercel
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+logs/
+*.log
 
 # OS & Editor Specific Files
 .DS_Store

@@ -1,15 +1,18 @@
 {
-  "name": "kenya-carbon-mrv-backend",
+  "name": "kenya-carbon-mrv-platform",
   "version": "1.0.0",
-  "description": "Backend API for Kenya Carbon MRV Platform",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "pg": "^8.11.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

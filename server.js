@@ -9,13 +9,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Handle favicon requests to reduce log noise
+// Favicon handler for log noise reduction
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// Connection string handling for Neon / Vercel
+// Database connection string evaluation
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 
-// Instantiate PostgreSQL Connection Pool ONCE
+// PostgreSQL Connection Pool instantiation
 const pool = new Pool({
   connectionString: connectionString || 'postgresql://placeholder:placeholder@localhost:5432/placeholder',
   ssl: connectionString ? { rejectUnauthorized: false } : false,
@@ -24,7 +24,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
-// Root Landing Route
+// Landing Route
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'online',
@@ -33,12 +33,12 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health Check & Database Connection Verification
+// Database Connection Verification
 app.get('/api/health', async (req, res) => {
   if (!connectionString) {
     return res.status(500).json({
       status: 'error',
-      message: 'DATABASE_URL environment variable is missing on Vercel.'
+      message: 'DATABASE_URL environment variable is missing on target deployment.'
     });
   }
 
@@ -59,7 +59,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// POST /api/init-db - Create required tables with GIS coordinate columns
+// Database Table Initialization with GIS and Household metrics
 app.post('/api/init-db', async (req, res) => {
   try {
     await pool.query(`
@@ -68,6 +68,8 @@ app.post('/api/init-db', async (req, res) => {
         name VARCHAR(255) NOT NULL,
         location VARCHAR(255),
         project_type VARCHAR(255) NOT NULL,
+        fuel_type VARCHAR(255),
+        target_households INTEGER DEFAULT 0,
         co2_reduced NUMERIC(12, 2) DEFAULT 0.00,
         latitude NUMERIC(10, 6),
         longitude NUMERIC(10, 6),
@@ -78,7 +80,7 @@ app.post('/api/init-db', async (req, res) => {
     `);
     res.status(200).json({
       status: 'success',
-      message: 'Database tables initialized successfully with spatial attributes!'
+      message: 'Database tables initialized successfully with spatial and fuel attributes!'
     });
   } catch (error) {
     res.status(500).json({
@@ -89,7 +91,7 @@ app.post('/api/init-db', async (req, res) => {
   }
 });
 
-// GET /api/projects - Fetch all projects
+// Fetch All Projects
 app.get('/api/projects', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM mrv_projects ORDER BY id DESC;');
@@ -106,9 +108,20 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
-// POST /api/projects - Register a new project with GIS coordinates
+// Register New MRV Project
 app.post('/api/projects', async (req, res) => {
-  const { name, location, project_type, co2_reduced, latitude, longitude, description, developer } = req.body;
+  const { 
+    name, 
+    location, 
+    project_type, 
+    fuel_type, 
+    target_households, 
+    co2_reduced, 
+    latitude, 
+    longitude, 
+    description, 
+    developer 
+  } = req.body;
 
   if (!name || !project_type) {
     return res.status(400).json({
@@ -119,11 +132,26 @@ app.post('/api/projects', async (req, res) => {
 
   try {
     const query = `
-      INSERT INTO mrv_projects (name, location, project_type, co2_reduced, latitude, longitude, description, developer)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO mrv_projects (
+        name, location, project_type, fuel_type, target_households, 
+        co2_reduced, latitude, longitude, description, developer
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *;
     `;
-    const values = [name, location, project_type, co2_reduced || 0, latitude || null, longitude || null, description, developer];
+    const values = [
+      name, 
+      location || null, 
+      project_type, 
+      fuel_type || null, 
+      target_households || 0, 
+      co2_reduced || 0, 
+      latitude || null, 
+      longitude || null, 
+      description || null, 
+      developer || null
+    ];
+    
     const result = await pool.query(query, values);
 
     res.status(201).json({
@@ -141,11 +169,11 @@ app.post('/api/projects', async (req, res) => {
   }
 });
 
-// Local development server runner
+// Development runner trigger
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => console.log(`Server running locally on port ${PORT}`));
 }
 
-// Export module for Vercel Serverless Function Execution MUST be at the very bottom
+// Module Export for Vercel Serverless Function Execution
 module.exports = app;

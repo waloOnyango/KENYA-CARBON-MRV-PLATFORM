@@ -1,11 +1,11 @@
 services:
-  # Web Service for Node.js / Express Backend
+  # Web Service for Node.js / Express Backend & Static UI
   - type: web
     name: kenya-carbon-mrv-backend
     env: node
     region: frankfurt
     plan: free
-    rootDir: backend
+    rootDir: frontend
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -21,26 +21,5 @@ databases:
   - name: mrv-postgres-db
     region: frankfurt
     plan: free
-    services:
-  # Web Service for Node.js / Express Backend
-  - type: web
-    name: kenya-carbon-mrv-backend
-    env: node
-    region: frankfurt
-    plan: free
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: mrv-postgres-db
-          property: connectionString
-
-databases:
-  # Managed PostgreSQL Database Instance
-  - name: mrv-postgres-db
-    region: frankfurt
-    plan: free
+    databaseName: mrv_db
+    user: mrv_user
