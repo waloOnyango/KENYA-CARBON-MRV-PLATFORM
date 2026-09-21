@@ -67,3 +67,80 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Export module for Vercel Serverless Function Execution
 module.exports = app;
+// POST /api/projects - Register a new project
+app.post('/api/projects', async (req, res) => {
+  const { name, location, project_type, description, developer } = req.body;
+
+  if (!name || !project_type) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Name and project_type are required fields.'
+    });
+  }
+
+  try {
+    const query = `
+      INSERT INTO mrv_projects (name, location, project_type, description, developer)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *;
+    `;
+    const values = [name, location, project_type, description, developer];
+    const result = await pool.query(query, values);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Project registered successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error inserting project:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to register project',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/projects - Fetch all projects
+app.get('/api/projects', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM mrv_projects ORDER BY id DESC;');
+    res.status(200).json({
+      status: 'success',
+      data: result.rows
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve projects',
+      error: error.message
+    });
+  }
+});
+// POST /api/init-db - Create required tables
+app.post('/api/init-db', async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS mrv_projects (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        location VARCHAR(255),
+        project_type VARCHAR(255) NOT NULL,
+        description TEXT,
+        developer VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    res.status(200).json({
+      status: 'success',
+      message: 'Database tables initialized successfully!'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to initialize database tables',
+      error: error.message
+    });
+  }
+});
