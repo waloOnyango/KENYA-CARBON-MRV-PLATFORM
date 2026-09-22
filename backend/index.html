@@ -89,6 +89,9 @@
     </div>
 
     <script>
+        // Points directly to the live Vercel backend serverless deployment
+        const API_BASE_URL = 'https://kenya-carbon-mrv-platform.vercel.app';
+
         const form = document.getElementById('projectForm');
         const submitBtn = document.getElementById('submitBtn');
         const responseBox = document.getElementById('responseBox');
@@ -97,7 +100,7 @@
         // Fetch and populate registered projects on page load
         async function fetchProjects() {
             try {
-                const res = await fetch('/api/projects');
+                const res = await fetch(`${API_BASE_URL}/api/projects`);
                 const result = await res.json();
 
                 if (res.ok && Array.isArray(result.data)) {
@@ -148,7 +151,7 @@
             };
 
             try {
-                const res = await fetch('/api/projects', {
+                const res = await fetch(`${API_BASE_URL}/api/projects`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
